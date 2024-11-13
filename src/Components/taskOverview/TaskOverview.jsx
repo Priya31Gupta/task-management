@@ -1,48 +1,77 @@
 import './TaskOverview.scss';
 import useTaskStore from '../../store/useTaskStore';
-import { useState,useEffect } from 'react';
+import { useState } from 'react';
+import { TaskItem } from '../taskItem/TaskItem';
 
 const TaskList = () => {
     const list = useTaskStore((state) => state.list);
     const increasePopulation = useTaskStore((state) => state.increasePopulation);
-    const updateBears = useTaskStore((store) => store.updateBears)
+    const updateBears = useTaskStore((store) => store.updateBears);
+    const filterList = useTaskStore((store) => store.filterList);
     const [task, setTask] = useState('');
-    const handleAddTask = (event) => {
-        if (task.trim()) { // Ensure the task is not empty
-            event.preventDefault();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingData ,setEditingData] = useState({});
+    const [selectedValue, setSelectedValue] = useState('');
+    const [filteredTasks, setFilteredTasks] = useState(list);
+
+    const onAdd = (task) => {
+        if (task.trim()) {
             increasePopulation({
                 name: task,
                 id: Math.random() * 10,
                 isComplete: false
             });
-            setTask(''); // Clear the input
-        } else {
-            console.log('Task is empty, not adding.');
+            
         }
+    }
+    const handleAddTask = (event) => {
+        event.preventDefault();
+        !isEditing ? onAdd(task) : onEdit(task);
+        setTask(''); 
     };
 
-    const handleTaskComplete = (task) => {
-console.log('✌️task --->', task);
-        updateBears({...task, isComplete:!task.isComplete });
-    };
-    
+    const onEdit = (item) => {
+        updateBears({...editingData, name: task });
+        setIsEditing(false);
+    }
+
+    const handleTaskEdit = (task) => {
+        setTask(task.name);
+        setIsEditing(true);
+        setEditingData(task);
+    }
+
+    const filterData = () => {
+        if (selectedValue === 'Closed') {
+            setFilteredTasks(list.filter((task) => task.isComplete)); // Show only completed tasks
+        } else if (selectedValue === 'Open') {
+            setFilteredTasks(list.filter((task) => !task.isComplete)); // Show only open tasks
+        } else {
+            setFilteredTasks(list); // Show all tasks if no filter is selected
+        }
+
+        filterList(filteredTasks)
+console.log('✌️filteredTasks --->', filteredTasks);
+    }
     return <div className="task-overview">
 
         <div className='flex flex-row gap-4 justify-center flex-wrap'>
-            <input type="text" onChange={(e)=> setTask(e.target.value)}  className="p-1.5 rounded-sm shadow-sm h-10 w-96 text-gray-500" />
+            <input type="text" value={task} onChange={(e)=> setTask(e.target.value)}  className="p-1.5 rounded-sm shadow-sm h-10 w-96 text-gray-500" />
             <button 
                 type='button' 
-                className='size-10 bg-white text-gray-500 rounded-sm' 
+                className='size-30 bg-white text-gray-500 rounded-sm' 
                 onClick={handleAddTask}>
-                +
+                + Add
             </button>
+            <select className='text-gray-500' value={selectedValue} onChange={(e) =>{ setSelectedValue(e.target.value);filterData()}}>
+                <option value={"All"}>Select...</option>
+                <option value={'Closed'}>Closed</option>
+                <option value={'Open'}>Open</option>
+            </select>
         </div>
         {
             list.length > 0 && list.map((task)=> {
-                return <div className='flex flex-row gap-4 justify-center flex-wrap my-1.5' key={task.id}>
-                    <div className={`p-1.5 bg-white rounded-sm shadow-sm h-full w-96 text-gray-500 ${task.isCompleted ? 'line-through':''}`}>{task.name} </div>
-                    <button type='button' onClick={() =>handleTaskComplete(task)} className='bg-white text-gray-500 rounded-sm px-1 py-1'>{task.isCompleted ? 'Closed' : 'Open'}</button>
-                </div>
+                return <TaskItem task={task} handleTaskEdit={handleTaskEdit} key={task.id} filterData={filterData}/>
             })
         }
     </div>
